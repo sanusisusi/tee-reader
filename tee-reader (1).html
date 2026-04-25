@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tee Reader</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#faf8f4;--surface:#fff;--surface2:#f3f0e8;
+  --ink:#1c1810;--ink2:#5a5040;--ink3:#9a8f7a;
+  --border:#e0d8c8;--border2:#c8bca8;
+  --pur:#7c3aed;--pur-h:#6d28d9;--pur-l:#ede9fe;--pur-b:#c4b5fd;
+  --ok-bg:#e8f0ec;--ok-c:#2d4a3e;--no-bg:#f5e8e8;--no-c:#7a2020;
+  --r:12px;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);margin:0;min-height:100vh}
+#wrap{display:flex;min-height:100vh}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,.25)}50%{box-shadow:0 0 0 6px rgba(124,58,237,0)}}
+@keyframes slideInLeft{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+@keyframes tooltipFade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .3s ease both}
+.a1{animation-delay:.05s}.a2{animation-delay:.1s}.a3{animation-delay:.15s}.a4{animation-delay:.2s}.a5{animation-delay:.25s}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:215px;min-width:215px;background:var(--surface);
+  border-right:.5px solid var(--border);
+  display:flex;flex-direction:column;min-height:100vh;
+  transition:transform .25s ease;
+}
+.sb-head{padding:1.1rem 1rem .9rem;border-bottom:.5px solid var(--border)}
+.sb-head h1{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--ink)}
+.sb-head .slogan{font-size:.67rem;color:var(--pur);margin-top:2px;font-style:italic;font-family:'Playfair Display',serif}
+.sb-head .count{font-size:.6rem;color:var(--ink3);margin-top:4px;text-transform:uppercase;letter-spacing:.4px}
+.sb-label{font-size:.6rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink3);padding:.85rem 1rem .35rem;font-weight:500}
+.ni{display:flex;align-items:center;gap:7px;padding:.5rem 1rem;cursor:pointer;border-left:2.5px solid transparent;transition:background .2s,border-color .2s,transform .18s;position:relative;overflow:hidden}
+.ni::after{content:'';position:absolute;inset:0;background:var(--pur-l);opacity:0;transition:opacity .2s;pointer-events:none}
+.ni:hover{transform:translateX(3px);border-left-color:var(--pur-b)}
+.ni:hover::after{opacity:1}
+.ni:hover .nl{color:var(--pur)}
+.ni:hover .dot{transform:scale(1.4)}
+.ni.active{background:var(--pur-l);border-left-color:var(--pur)}
+.ni.active .nl{color:var(--pur);font-weight:500}
+.ni .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:transform .18s;position:relative;z-index:1}
+.ni .nl{font-size:.75rem;color:var(--ink2);line-height:1.3;position:relative;z-index:1;transition:color .18s}
+.ni .ng{font-size:.62rem;color:var(--ink3);margin-top:1px;position:relative;z-index:1}
+.sb-foot{margin-top:auto;padding:.85rem 1rem;border-top:.5px solid var(--border)}
+.sb-foot p{font-size:.67rem;color:var(--ink3);line-height:1.55}
+.copy{font-size:.6rem;color:var(--ink3);margin-top:.4rem;padding-top:.4rem;border-top:.5px solid var(--border)}
+
+/* ── MAIN ── */
+#main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* ── TOP BAR ── */
+.topbar{
+  display:flex;align-items:center;gap:.75rem;padding:.8rem 1.25rem;
+  border-bottom:.5px solid var(--border);background:var(--surface);
+  position:sticky;top:0;z-index:20;
+}
+/* hamburger — hidden on desktop */
+.hbg{display:none;flex-direction:column;gap:4px;cursor:pointer;padding:6px;border-radius:8px;transition:background .15s;flex-shrink:0;border:none;background:transparent}
+.hbg:hover{background:var(--pur-l)}
+.hbg span{display:block;width:20px;height:2px;background:var(--ink);border-radius:2px;transition:transform .25s,opacity .2s,background .15s}
+.hbg:hover span{background:var(--pur)}
+/* animated X state */
+.hbg.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.hbg.open span:nth-child(2){opacity:0}
+.hbg.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+/* brand in topbar */
+.topbar-brand{display:flex;flex-direction:column;flex:1;min-width:0}
+.topbar-brand h2{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.topbar-brand .slogan{font-size:.62rem;color:var(--pur);font-style:italic;font-family:'Playfair Display',serif}
+
+/* tabs */
+.tabs{display:flex;gap:4px;flex-shrink:0}
+.tab{font-size:.72rem;padding:5px 12px;border-radius:20px;cursor:pointer;border:.5px solid var(--border2);background:transparent;color:var(--ink2);font-family:'Inter',sans-serif;transition:all .18s;position:relative;overflow:hidden}
+.tab::before{content:'';position:absolute;inset:0;background:var(--pur-l);opacity:0;transition:opacity .18s;border-radius:20px;pointer-events:none}
+.tab:hover{transform:translateY(-2px);border-color:var(--pur-b);color:var(--pur);box-shadow:0 3px 10px rgba(124,58,237,.15)}
+.tab:hover::before{opacity:1}
+.tab:active{transform:scale(.95)!important}
+.tab.on{background:var(--pur);color:#fff;border-color:var(--pur);box-shadow:0 2px 8px rgba(124,58,237,.3);animation:pulse 2.5s ease infinite}
+.tab.on::before{opacity:0}
+.tab.on:hover{transform:translateY(-2px)}
+
+.prog-track{height:2px;background:var(--border)}
+.prog-fill{height:2px;background:var(--pur);transition:width .4s ease}
+#content{flex:1}
+
+/* ── HOME ── */
+#home{padding:1.75rem 1.25rem}
+.hero{margin-bottom:1.75rem}
+.hero h2{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;color:var(--ink);line-height:1.25}
+.hero p{font-size:.83rem;color:var(--ink2);margin-top:.35rem;line-height:1.6}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.85rem}
+.tile{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
+.tile:hover{transform:translateY(-4px);border-color:var(--pur-b);box-shadow:0 8px 24px rgba(124,58,237,.12)}
+.tcover{height:110px;display:flex;align-items:flex-end;padding:.65rem;position:relative}
+.tcover-badge{position:absolute;top:8px;right:8px;font-size:.58rem;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.88);color:#333;font-weight:500}
+.ttitle{font-family:'Playfair Display',serif;font-size:.78rem;font-weight:700;color:#fff;line-height:1.3;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.tinfo{padding:.65rem}
+.tauthor{font-size:.67rem;color:var(--ink3);margin-bottom:.3rem}
+.tgenre{font-size:.62rem;padding:2px 8px;border-radius:20px;display:inline-block}
+
+/* ── READER ── */
+#reader-pane,#summary-pane,#quiz-pane{display:none}
+.rprose{max-width:640px;margin:0 auto;padding:1.75rem 1.25rem}
+.rprose h2{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:500;color:var(--ink);margin:1.75rem 0 .7rem;padding-top:1.25rem;border-top:.5px solid var(--border)}
+.rprose h2:first-child{border:none;margin-top:0;padding-top:0}
+.rprose p{font-family:'Playfair Display',serif;font-size:.98rem;line-height:1.9;color:#2c2418;margin-bottom:1.1rem}
+
+/* ── WORD DEFINITIONS ── */
+.def-word{
+  border-bottom:1.5px dotted var(--pur);cursor:help;
+  position:relative;border-radius:2px;padding:0 1px;
+  transition:color .15s,background .15s;display:inline;
+}
+.def-word:hover,.def-word:focus{color:var(--pur);background:var(--pur-l);outline:none}
+.tip{
+  display:none;position:absolute;bottom:calc(100% + 8px);left:50%;
+  transform:translateX(-50%);background:#1c1810;color:#faf8f4;
+  font-size:.72rem;font-family:'Inter',sans-serif;font-style:normal;
+  line-height:1.5;padding:.45rem .7rem;border-radius:8px;
+  width:max-content;max-width:220px;white-space:normal;
+  box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:200;pointer-events:none;
+  animation:tooltipFade .18s ease both;
+}
+.tip::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:#1c1810;
+}
+.def-word:hover .tip,.def-word:focus .tip{display:block}
+
+.done-bar{max-width:640px;margin:0 auto 2rem;padding:1.1rem 1.25rem;background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);text-align:center}
+.done-bar p{font-size:.82rem;color:var(--ink2);margin-bottom:.65rem}
+.brow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.btn{padding:8px 24px;border-radius:24px;font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer;font-weight:400;border:none;transition:transform .18s,box-shadow .18s,background .18s;position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.15);opacity:0;transition:opacity .18s;pointer-events:none}
+.btn:hover::after{opacity:1}
+.btn:active{transform:scale(.95)!important}
+.btn-p{background:var(--pur);color:#fff;box-shadow:0 2px 8px rgba(124,58,237,.25)}
+.btn-p:hover{background:var(--pur-h);transform:translateY(-2px);box-shadow:0 5px 16px rgba(124,58,237,.35)}
+.btn-o{background:transparent;color:var(--pur);border:.5px solid var(--pur-b)}
+.btn-o:hover{background:var(--pur-l);transform:translateY(-2px);border-color:var(--pur)}
+
+/* ── SUMMARY ── */
+#summary-pane{padding:1.25rem}
+.sbk{display:flex;gap:.85rem;align-items:flex-start;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:.5px solid var(--border)}
+.scov{width:50px;height:66px;border-radius:6px;flex-shrink:0}
+.sbk h2{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--ink)}
+.sby{font-size:.72rem;color:var(--ink3);margin-top:3px}
+.scard{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:1rem;margin-bottom:.75rem}
+.slabel{font-size:.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:500;margin-bottom:.55rem}
+.scard p{font-size:.85rem;color:var(--ink2);line-height:1.7}
+.trow{display:flex;flex-wrap:wrap;gap:6px}
+.tpill{font-size:.7rem;padding:3px 11px;background:var(--pur-l);color:var(--pur);border:.5px solid var(--pur-b);border-radius:20px;transition:background .15s,transform .15s}
+.tpill:hover{background:var(--pur-b);transform:scale(1.05)}
+.qblock{border-left:2.5px solid var(--pur);padding:.7rem .9rem;margin-bottom:.6rem;background:var(--pur-l);border-radius:0 6px 6px 0}
+.qblock p{font-family:'Playfair Display',serif;font-style:italic;font-size:.87rem;color:var(--ink);line-height:1.6}
+.qattr{font-size:.68rem;color:var(--ink3);margin-top:.35rem;font-family:'Inter',sans-serif}
+
+/* ── QUIZ ── */
+#quiz-pane{padding:1.25rem;max-width:580px;margin:0 auto}
+.qztop{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem}
+.qzctr{font-size:.72rem;color:var(--ink3);font-weight:500}
+.qzlive{font-size:.72rem;color:var(--pur);font-weight:500;background:var(--pur-l);padding:3px 10px;border-radius:20px}
+.qzq{font-family:'Playfair Display',serif;font-size:1.02rem;color:var(--ink);line-height:1.6;margin-bottom:1.1rem}
+.obt{width:100%;text-align:left;padding:.78rem .9rem;border:.5px solid var(--border2);border-radius:10px;font-size:.83rem;cursor:pointer;background:var(--surface);color:var(--ink);font-family:'Inter',sans-serif;margin-bottom:.45rem;transition:all .16s;display:flex;align-items:center;gap:8px}
+.obt:hover:not(.lk){background:var(--pur-l);border-color:var(--pur-b);transform:translateX(3px)}
+.obt:hover:not(.lk) .oltr{background:var(--pur);border-color:var(--pur);color:#fff;opacity:1}
+.obt.ok{background:var(--ok-bg);border-color:#2d4a3e;color:var(--ok-c)}
+.obt.no{background:var(--no-bg);border-color:#7a2020;color:var(--no-c)}
+.obt.lk{cursor:default}
+.oltr{width:20px;height:20px;border-radius:50%;border:.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:.67rem;flex-shrink:0;opacity:.55;transition:all .16s}
+.fb{padding:.8rem .9rem;border-radius:8px;font-size:.8rem;line-height:1.55;margin-top:.65rem;display:none}
+.fb.ok{background:var(--ok-bg);color:var(--ok-c)}
+.fb.no{background:var(--no-bg);color:var(--no-c)}
+.qnav{display:none;justify-content:flex-end;margin-top:.9rem}
+.scoreend{text-align:center;padding:2.5rem 1rem;animation:fadeUp .4s ease both}
+.sbig{font-family:'Playfair Display',serif;font-size:3.2rem;font-weight:700;color:var(--pur)}
+.smsg{font-size:.87rem;color:var(--ink2);margin-top:.4rem}
+.spct{font-size:.72rem;color:var(--ink3);margin-top:.2rem}
+
+/* ── MOBILE OVERLAY ── */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:30;backdrop-filter:blur(2px);cursor:pointer}
+#overlay.show{display:block}
+
+/* ── MOBILE BREAKPOINT ── */
+@media(max-width:640px){
+  #sidebar{
+    position:fixed;top:0;left:0;height:100vh;z-index:40;
+    transform:translateX(-100%);box-shadow:4px 0 24px rgba(0,0,0,.12);
+  }
+  #sidebar.open{transform:translateX(0);animation:slideInLeft .25s ease both}
+  .hbg{display:flex}
+  #home{padding:1.25rem 1rem}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.7rem}
+  .rprose{padding:1.25rem 1rem}
+  #summary-pane{padding:1rem}
+  #quiz-pane{padding:1rem}
+  .tabs{gap:2px}
+  .tab{font-size:.66rem;padding:4px 8px}
+  .tip{max-width:180px;font-size:.68rem}
+}
+</style>
+</head>
+<body>
+
+<!-- mobile overlay -->
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<div id="wrap">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-head">
+      <h1>Tee Reader</h1>
+      <div class="slogan">Read with me</div>
+      <div class="count">8 novels</div>
+    </div>
+    <div class="sb-label">Shelf</div>
+    <div class="ni active" id="nav-home" onclick="showHome()">
+      <div class="dot" style="background:var(--pur)"></div>
+      <div><div class="nl">All novels</div></div>
+    </div>
+    <div class="sb-label" style="margin-top:.4rem">Your books</div>
+    <div id="book-nav"></div>
+    <div class="sb-foot">
+      <p>Tap a novel to read, explore its summary, or take a quiz.</p>
+      <div class="copy">&copy; <span id="yr"></span> Developed by Umar Ahmad</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <button class="hbg" id="hbg" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-brand">
+        <h2>Tee Reader</h2>
+        <span class="slogan">Read with me</span>
+      </div>
+      <div class="tabs" id="tab-strip" style="display:none">
+        <button class="tab on" onclick="sw('read')">Read</button>
+        <button class="tab" onclick="sw('summary')">Summary</button>
+        <button class="tab" onclick="sw('quiz')">Quiz</button>
+      </div>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+
+    <div id="content">
+      <div id="home">
+        <div class="hero anim"><h2>Welcome back, reader.</h2><p>Eight novels — pick one to begin.</p></div>
+        <div class="grid" id="book-grid"></div>
+      </div>
+      <div id="reader-pane"></div>
+      <div id="summary-pane"></div>
+      <div id="quiz-pane"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+/* ── HAMBURGER ── */
+function toggleSidebar(){
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('overlay');
+  const hbg = document.getElementById('hbg');
+  const isOpen = sb.classList.toggle('open');
+  ov.classList.toggle('show', isOpen);
+  hbg.classList.toggle('open', isOpen);
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('hbg').classList.remove('open');
+}
+
+/* ── WORD DEFINITIONS ── */
+const DEFS = {
+  "perseverance":"Continuing firmly despite difficulty or delay in achieving success.",
+  "sacrifice":"Giving up something valuable for a cause or for another person's benefit.",
+  "determination":"Firm decision and resolve to do something; not giving up.",
+  "humility":"Being modest and not thinking you are better than others.",
+  "resilience":"The ability to recover quickly from difficulties or hardship.",
+  "scholarship":"A financial award given to a student based on academic merit or need.",
+  "malpractice":"Illegal or unethical behaviour by a professional — e.g. exam cheating.",
+  "epistolary":"A story told through a series of letters or written messages.",
+  "admiration":"Respect and warm approval felt toward someone or something.",
+  "colonialism":"When a powerful nation controls another country politically and economically.",
+  "ancestral":"Relating to or inherited from one's ancestors or family history.",
+  "masquerade":"A disguise or false show; also a festival where people wear elaborate masks.",
+  "tyrant":"A cruel, oppressive ruler or person who uses power unfairly.",
+  "integrity":"The quality of being honest and having strong moral principles.",
+  "apathy":"Lack of interest, enthusiasm, or concern about something important.",
+  "infrastructure":"Basic systems and structures a country needs — schools, roads, power, water.",
+  "proprietor":"A person who owns and runs a business or establishment.",
+  "harmattan":"A dry, dusty wind that blows from the Sahara desert across West Africa.",
+  "defiant":"Showing bold resistance to authority or an opposing force.",
+  "conviction":"A strong belief or opinion; also a formal declaration of guilt in court.",
+  "solemn":"Serious, formal, and dignified in manner or tone.",
+  "poignant":"Evoking a keen sense of sadness or regret; deeply moving emotionally.",
+  "eloquent":"Fluent, persuasive, and well-expressed in speech or writing.",
+  "melancholy":"A deep feeling of pensive sadness, often with no obvious cause.",
+  "turmoil":"A state of great disturbance, confusion, or uncertainty.",
+  "kinship":"A feeling of being related to or having something in common with others.",
+  "reverence":"Deep respect and awe — especially for something sacred or greatly admired.",
+  "transparent":"Open and honest; not hiding anything.",
+  "curriculum":"The subjects and content taught in a school or course of study.",
+  "rivalry":"Keen competition between two people or groups for the same goal.",
+  "suppress":"To forcibly stop or prevent something from being known or expressed.",
+  "persecution":"Hostility and ill-treatment — often because of one's race, religion, or beliefs.",
+  "atonement":"Making amends for a wrong or error; reparation.",
+  "ominous":"Suggesting that something bad or unpleasant is likely to happen.",
+  "patriarchal":"Relating to a system in which men hold primary power and authority.",
+  "ambiguous":"Open to more than one interpretation; not clear or decided.",
+  "redemption":"Being saved from sin or error; making up for past wrongdoing.",
+};
+
+function wrapDefs(html){
+  return html.replace(/>([^<]+)</g, (match, text) => {
+    let out = text;
+    Object.keys(DEFS).forEach(word => {
+      const re = new RegExp(`\\b(${word}s?|${word[0].toUpperCase()+word.slice(1)}s?)\\b`, 'g');
+      out = out.replace(re, (m) => {
+        const key = m.toLowerCase().replace(/s$/,'');
+        const def = DEFS[key] || DEFS[word];
+        if(!def) return m;
+        return `<span class="def-word" tabindex="0">${m}<span class="tip">${def}</span></span>`;
+      });
+    });
+    return `>${out}<`;
+  });
+}
+
+/* ── BOOKS ── */
+const BOOKS = [
+{id:0,title:"Eze Goes to School",author:"Onuora Nzekwu & Michael Crowder",genre:"Classic · Children",clr:"#6b4c2a",
+summary:{ov:"Eze Adi is a poor but determined boy from a humble Nigerian village whose greatest wish is an education. His journey — marked by worn clothes, empty lunch pails, and a mother who sells her wedding earrings — is a testament to sacrifice and grit.",themes:["Education","Perseverance","Family Sacrifice","Self-Belief","Community"],msg:"The novel celebrates the transformative power of education. Eze's journey tells young readers that no obstacle is too great when you refuse to stop walking.",quotes:[{t:"Education is the key to success. Not money. Not connections. Knowledge.",a:"Eze Adi"},{t:"Though not the best in class at the beginning, his determination started to pay off.",a:"Narrator"},{t:"I am ready.",a:"Eze, to his father"}]},
+content:`<h2>Background</h2><p>Eze Adi comes from a poor family in a humble Nigerian village. His father, despite financial struggles, shows deep conviction in the power of education and makes great sacrifice to send Eze to school. The humility of the family is matched only by the strength of their hope.</p><h2>Challenges at school</h2><p>At his first school, Eze faces many difficulties — he has no proper school supplies, wears worn clothes, and sometimes goes without lunch. He struggles at first because he has never been to school before, and the resilience he must build is remarkable.</p><h2>Perseverance and determination</h2><p>Eze refuses to give up. He studies hard, asks questions, and slowly improves. He makes friends and earns the admiration of his peers through consistent effort and solemn dedication.</p><h2>School success</h2><p>Though not the best in class at the beginning, Eze's determination starts to pay off. His teachers notice his effort and he earns better grades over time. Each small victory deepens his conviction that education is worth every sacrifice.</p><h2>Overall message</h2><p>The novel celebrates the power of education and hard work. Eze's journey encourages young readers to value school and to work persistently toward their goals, no matter the obstacles. His story is a poignant reminder that perseverance and humility can triumph over circumstance.</p>`,
+quiz:[{q:"What is Eze Adi's greatest wish?",opts:["Become a trader","Get an education","Leave his village","Become a soldier"],a:1,e:"Eze's greatest wish is to receive an education, despite his family's financial difficulties."},{q:"Why does Eze struggle at school initially?",opts:["He is lazy","He has no friends","He has never been to school","He dislikes teachers"],a:2,e:"Eze has never been to school before, making the learning environment entirely new and challenging."},{q:"Who sacrifices most to ensure Eze attends school?",opts:["His uncle","His teachers","His father","His neighbours"],a:2,e:"Eze's father sacrifices greatly despite the family's financial struggles."},{q:"What quality drives Eze's improvement?",opts:["Charm","Determination","Wealth","Luck"],a:1,e:"Eze's determination and refusal to give up drives his improvement."},{q:"What is the central theme?",opts:["War and conflict","Love and romance","Education and perseverance","Adventure"],a:2,e:"The central theme is the value of education and perseverance in the face of hardship."}]},
+
+{id:1,title:"The Light Beyond the Dust",author:"AI-generated",genre:"Inspirational · Fiction",clr:"#7a3a1a",
+summary:{ov:"Set in northern Nigeria, this story follows Sadiq Musa — a boy born into poverty in Kafin Daji — as he walks seven kilometres to school every day, earns a scholarship, and returns as a civil engineer to build a bridge and school for his community.",themes:["Education","Resilience","Sacrifice","Dreams","Community"],msg:"True success is not born from wealth or privilege, but from the willingness to walk the hard road.",quotes:[{t:"Education is the key to success. Not money. Not connections. Knowledge.",a:"Engineer Sadiq Musa"},{t:"You have something special. If you continue like this, you will go far.",a:"Mr. Okonkwo"},{t:"Education opened the door. It gave me confidence. It gave me a voice.",a:"Sadiq"}]},
+content:`<h2>Chapter One: The boy who dreamed big</h2><p>In the quiet village of Kafin Daji in northern Nigeria, where the harmattan wind swept red dust across the earth, lived a young boy named Sadiq Musa. His father was a petty trader and his mother made local snacks. But inside their modest mud home lived something powerful — hope. Sadiq wanted to become an engineer and build bridges in Abuja. His conviction was absolute.</p><h2>Chapter Two: The long walk</h2><p>There was no secondary school in Kafin Daji. The nearest one was seven kilometres away. Every morning before sunrise, Sadiq walked the long dusty road with remarkable resilience. Sometimes he went without breakfast. His mathematics teacher told him: "You have something special. If you continue like this, you will go far." That solemn word became his fuel.</p><h2>Chapter Three: Trials and temptations</h2><p>As years passed, challenges grew heavier. His father's business began to fail and apathy crept into the village's attitude toward his schooling. His mother made a tremendous sacrifice — selling her only gold earrings, a wedding gift — to keep him in school. From that moment, his determination became unshakeable.</p><h2>Chapter Four: The scholarship</h2><p>In his final year, the state government announced a scholarship exam. Sadiq prepared day and night under a flickering kerosene lamp. When results came, Sadiq Musa ranked first in the entire district. His perseverance had finally broken through.</p><h2>Chapter Five: The transformation</h2><p>University life was demanding but Sadiq had resilience. He graduated with First Class Honours. Years later, Engineer Sadiq Musa returned to Kafin Daji with solemn gratitude to build a modern bridge and a secondary school for his community. "Education opened the door," he told the villagers. "It gave me a voice."</p>`,
+quiz:[{q:"Where is the village Sadiq comes from?",opts:["Abuja","Kafin Daji","Gidan Rana","Kaduna"],a:1,e:"Sadiq comes from the quiet village of Kafin Daji in northern Nigeria."},{q:"How far did Sadiq walk to school?",opts:["2 km","5 km","7 km","10 km"],a:2,e:"The nearest secondary school was seven kilometres from Kafin Daji."},{q:"What did Sadiq's mother sacrifice for school fees?",opts:["Her sewing machine","Her gold earrings","Her savings","Her farmland"],a:1,e:"Sadiq's mother sold her gold earrings to cover his fees."},{q:"What did Sadiq rank in the scholarship exam?",opts:["Third in state","First in district","Second nationally","First in school"],a:1,e:"Sadiq Musa ranked first in the entire district."},{q:"What did Sadiq build when he returned home?",opts:["Hospital and mosque","Road and market","Bridge and secondary school","Factory and well"],a:2,e:"Engineer Sadiq returned to build a modern bridge and a secondary school for his community."}]},
+
+{id:2,title:"When the Baobab Bloomed",author:"AI-generated",genre:"Romance · Literary",clr:"#2d5a3a",
+summary:{ov:"A Nigerian romance set across Kano, Kaduna, and Abuja. Zainab Bello and Idris Abdullahi meet at a youth conference and build a love grounded not in butterflies, but in respect, patience, and shared purpose.",themes:["Love","Trust","Communication","Ambition","African Identity"],msg:"In Africa, love is not loud. It is steady. It grows like the baobab — deep roots, wide shade, lasting generations.",quotes:[{t:"Love is not enough. Respect and growth must follow.",a:"Idris Abdullahi"},{t:"When the baobab blooms, it means something rare and beautiful has happened.",a:"Idris, at the proposal"},{t:"Love is not butterflies. It is commitment.",a:"Idris Abdullahi"}]},
+content:`<h2>Chapter One: The girl with the golden voice</h2><p>In the ancient city of Kano, lived Zainab Bello — a final-year Mass Communication student at Bayero University. She was known for her eloquent voice and sharp intellect. But beneath her confidence, she carried a quiet melancholy. Love had disappointed her before.</p><h2>Chapter Two: The boy who read under streetlights</h2><p>Idris Abdullahi grew up in Kaduna, raised by a widowed mother. He studied Mechanical Engineering at Ahmadu Bello University. Their paths crossed at a youth leadership conference in Abuja. When he spoke with such conviction and kinship for his community, something stirred in Zainab — admiration.</p><h2>Chapter Three: Distance and determination</h2><p>After the conference, calls turned into long conversations and shared dreams. "Love is not enough," Idris said with solemn determination. "Respect and growth must follow." His transparent honesty was itself a form of reverence for their relationship.</p><h2>Chapter Four: Tested by fire</h2><p>During NYSC, an ominous rumour reached Zainab about Idris. Instead of assuming the worst, she travelled to see him. They sat beneath a large baobab tree. "I need you to be transparent with me," she said quietly. He explained everything. They made a solemn promise: honesty over assumption.</p><h2>Chapter Five: The proposal</h2><p>Five years later, Idris called Zainab forward at the commissioning of his first solar-powered community project. "When the baobab blooms, it means something rare and beautiful has happened." He turned to her. "Zainab Bello, will you marry me?" Tears filled her eyes as the crowd cheered.</p><h2>Chapter Six: A love rooted in purpose</h2><p>Their wedding blended Hausa traditions and colourful aso-ebi. Years later, Idris said with solemn conviction: "Love is not butterflies. It is commitment." And it bloomed — lasting and wide, like the baobab itself.</p>`,
+quiz:[{q:"Where does Zainab Bello study?",opts:["University of Lagos","Ahmadu Bello University","Bayero University Kano","University of Ibadan"],a:2,e:"Zainab is a final-year student at Bayero University Kano."},{q:"Where do Zainab and Idris first meet?",opts:["A wedding in Kano","A youth conference in Abuja","A market in Kaduna","Zainab's university"],a:1,e:"Their paths cross at a youth leadership conference in Abuja."},{q:"How does Zainab respond to the rumours about Idris?",opts:["Ends the relationship","Ignores them","Travels to confront him","Asks friends to investigate"],a:2,e:"Zainab travels to Plateau State to speak with Idris directly."},{q:"What does the baobab tree symbolise?",opts:["Death and sorrow","Danger","Rare, enduring love","Fame and success"],a:2,e:"The baobab symbolises something rare and beautiful."},{q:"According to Idris, what is love?",opts:["Butterflies and excitement","Fame","Commitment and respect","Distance"],a:2,e:"Idris says love is not butterflies — it is commitment."}]},
+
+{id:3,title:"Things Fall Apart",author:"Chinua Achebe",genre:"Classic · African Lit",clr:"#4a3060",
+summary:{ov:"One of Africa's greatest novels. Okonkwo — a proud Igbo warrior — watches his world torn apart by colonial missionaries and the inevitable changes they bring to Umuofia's traditional society.",themes:["Identity","Colonialism","Tradition vs Change","Masculinity","Fate"],msg:"The collapse of a man who cannot bend is also the collapse of a world that could not adapt.",quotes:[{t:"Until the lions have their own historians, the history of the hunt will always glorify the hunter.",a:"Chinua Achebe"},{t:"Age was respected among his people, but achievement was revered.",a:"Narrator"},{t:"When the moon is shining the cripple becomes hungry for a walk.",a:"Igbo proverb"}]},
+content:`<h2>Part One: The rise of Okonkwo</h2><p>Okonkwo is one of the most powerful men in the nine villages of Umuofia. He has built his wealth through determination and sheer will, with a deep reverence for hard work and a solemn conviction that weakness is ancestral shame. Yet beneath his iron exterior lives a man haunted by turmoil — fear of becoming his lazy, debt-ridden father Unoka.</p><h2>Part Two: Exile</h2><p>During the funeral of a respected elder, Okonkwo's gun accidentally kills the man's son. As is the custom, Okonkwo and his family face persecution — exiled for seven years to Mbanta. During his exile, colonialism spreads through the region and missionaries arrive. His son Nwoye converts to Christianity — a solemn betrayal of all things ancestral in Okonkwo's eyes.</p><h2>Part Three: Return and collapse</h2><p>Okonkwo returns to find a village changed beyond recognition. The turmoil of colonial rule has eroded the old ways. When a church member unmasks a sacred masquerade — a defiant act against tradition — Okonkwo and others burn the church. They are arrested and humiliated. Upon release, Okonkwo kills a court messenger. When no one rises with him, he understands with ominous clarity: his world is gone. He hangs himself.</p><h2>Legacy</h2><p>The District Commissioner considers devoting a paragraph to Okonkwo in his book. Achebe's devastating irony is complete — yet Achebe rescues Okonkwo from that footnote with eloquent reverence in writing this novel.</p>`,
+quiz:[{q:"What drives Okonkwo's ambition most?",opts:["Love of wealth","Fear of becoming like his father","Desire for power","Hatred of missionaries"],a:1,e:"Okonkwo is fundamentally motivated by terror of becoming like his weak, idle father Unoka."},{q:"Why is Okonkwo exiled from Umuofia?",opts:["He murders a chief","His gun accidentally kills a young man","He converts to Christianity","He refuses to pay debts"],a:1,e:"During a funeral, Okonkwo's gun accidentally kills the son of the deceased."},{q:"What does Okonkwo's son Nwoye do?",opts:["Becomes a thief","Marries into a rival clan","Converts to Christianity","Joins the colonial government"],a:2,e:"Nwoye becomes a Christian — to Okonkwo, a betrayal of everything ancestral."},{q:"How does Things Fall Apart end?",opts:["Okonkwo reclaims his glory","Okonkwo flees to Mbanta","Okonkwo kills the Commissioner","Okonkwo takes his own life"],a:3,e:"After killing a court messenger and seeing no one rise with him, Okonkwo hangs himself."},{q:"What does the District Commissioner plan to do about Okonkwo?",opts:["Honour him with a memorial","Build a school in his name","Devote a paragraph in his book","Arrest his family"],a:2,e:"The Commissioner plans to give Okonkwo a mere paragraph in his colonial memoir."}]},
+
+{id:4,title:"Purple Hibiscus",author:"Chimamanda Ngozi Adichie",genre:"Literary Fiction · Drama",clr:"#6a2a6a",
+summary:{ov:"Fifteen-year-old Kambili lives in a beautiful, silent house in Enugu controlled by her devout, tyrannical father Eugene. When she visits her Aunty Ifeoma in Nsukka, she discovers laughter, freedom, and the first stirrings of her own voice.",themes:["Silence vs Voice","Religious Extremism","Freedom","Coming of Age","Family"],msg:"Freedom is not given — it is discovered, often in the most unlikely places. Purple Hibiscus is a story about a girl learning to speak.",quotes:[{t:"Things are not always as they seem.",a:"Kambili Achike"},{t:"The only truth I know is what I hold onto.",a:"Aunty Ifeoma"},{t:"We cannot trample on the dignity of others.",a:"Eugene — misquoting scripture"}]},
+content:`<h2>The silent house</h2><p>Kambili Achike is fifteen years old and speaks in whispers. Her father, Eugene — a patriarchal tyrant — is known publicly for his admiration of Catholic piety and his solemn charity. But at home his persecution of his family is relentless. Kambili and her brother Jaja have learned to move quietly through their Enugu house, suppressing their own voices to survive.</p><h2>Nsukka: a different world</h2><p>When political turmoil forces the children to stay with Aunty Ifeoma in Nsukka, Kambili enters a different universe. Her aunt questions faith with conviction and without reverence for oppressive authority. It is here that Kambili encounters Father Amadi — and begins, with melancholy wonder, to realise she is allowed to feel and to speak.</p><h2>The purple hibiscus</h2><p>Aunty Ifeoma tends rare, defiant purple hibiscus in her garden — a poignant symbol of freedom and resilience throughout the novel. Jaja eventually brings a cutting home to Enugu, planting something new in the silence.</p><h2>Breaking</h2><p>Eugene's violence escalates into persecution. Kambili's mother quietly administers atonement — poisoning his tea. Eugene dies. Jaja — with solemn kinship — confesses to protect their mother and goes to prison. Kambili spends years finding her voice. By the novel's end, she speaks — fully, clearly, without whispering.</p>`,
+quiz:[{q:"What is Kambili's father Eugene known for publicly?",opts:["Cruelty and corruption","Generosity and devout Catholic faith","Political ambition","Teaching at university"],a:1,e:"Publicly, Eugene is admired as a generous, devout Catholic — a sharp irony given his violence at home."},{q:"What does Kambili discover at Aunty Ifeoma's house?",opts:["Wealth and privilege","Silence and discipline","Laughter, freedom, and her own voice","Her father's secrets"],a:2,e:"Nsukka is loud, loving, and questioning — where Kambili begins to discover she is allowed to feel and speak."},{q:"What do the purple hibiscus flowers symbolise?",opts:["Grief and loss","Tradition and ancestors","Freedom and defiance","Love and marriage"],a:2,e:"The rare purple hibiscus are a recurring symbol of freedom."},{q:"Who confesses to Eugene's murder?",opts:["Kambili","Aunty Ifeoma","Jaja, to protect their mother","Their mother, voluntarily"],a:2,e:"Jaja confesses — actually committed by their mother — out of a deep protective love for her."},{q:"How does Kambili change by the novel's end?",opts:["She becomes violent","She leaves Nigeria","She finds her voice and speaks clearly","She becomes a nun"],a:2,e:"The entire novel traces Kambili's journey from whispering silence to full, clear speech."}]},
+
+{id:5,title:"Sweet Sixteen",author:"Bolaji Abdullahi",genre:"YA Fiction · Nigerian",clr:"#c0533a",badge:"YA",
+summary:{ov:"Sweet Sixteen is an epistolary novel told through letters from Aliya's father to her on her sixteenth birthday. It is a tender, witty, and profoundly wise exploration of growing up female in Nigeria — covering beauty standards, peer pressure, faith, ambition, and the meaning of true education.",themes:["Growing Up","Identity","Gender","Education","Parent-Child Bond"],msg:"The most important thing a father can give his daughter is not protection — it is the wisdom and courage to protect herself.",quotes:[{t:"Being sixteen is not an achievement. What you do with sixteen is.",a:"Aliya's Father"},{t:"The world will try to tell you who you are. Your job is to decide whether to agree.",a:"Aliya's Father"},{t:"Read. Not because someone asked you to. Read because the world is too interesting to be ignored.",a:"Aliya's Father"}]},
+content:`<h2>The letters begin</h2><p>On the morning of her sixteenth birthday, Aliya receives an epistolary gift from her father — a collection of letters he has written to her over the years. Each letter covers a different topic: her education, her body, her faith, her future, and what it means to grow up as a young woman in Nigeria today. His solemn love for her fills every line.</p><h2>On beauty and identity</h2><p>Her father writes candidly about the ambiguous and often harmful pressures of beauty standards. He tells her with conviction that the most eloquent thing about her is her mind, and that any man who cannot see beyond her face is not worth her admiration or her time.</p><h2>On education and ambition</h2><p>One of the most poignant letters is about reading and curiosity. Her father urges her to read with determination — not because a curriculum demands it, but because the world is too interesting to be ignored. He challenges Aliya to join the company of Nigerian women who changed history.</p><h2>On peer pressure and friendship</h2><p>Her father addresses the social rivalry of secondary school — the cliques, the gossip, the desperate need to belong. He tells her that the friends worth keeping are the ones who make her more herself, not less, and whose kinship is built on honesty.</p><h2>On faith and doubt</h2><p>He does not tell her what to believe. Instead, he tells her that a faith that cannot survive questions is not faith at all — it is fear. He encourages her to ask hard questions with humility and transparency.</p><h2>The gift</h2><p>By the end of the letters, Aliya understands what her father has given her: not answers, but the resilience and tools to find her own. The novel ends with Aliya, sixteen, standing at the edge of her own life — equipped and unafraid.</p>`,
+quiz:[{q:"What form does Sweet Sixteen take?",opts:["A diary","A series of letters from father to daughter","A school textbook","A collection of poems"],a:1,e:"The novel is epistolary — structured as a collection of letters written by Aliya's father to her on her sixteenth birthday."},{q:"What does Aliya's father warn her about regarding beauty?",opts:["That beauty is the most important asset","That beauty standards are a trap obscuring a woman's true worth","That she should focus on fashion","That Nigerian men prefer lighter skin"],a:1,e:"Her father writes candidly about the trap of beauty standards and tells Aliya that her mind is her most beautiful feature."},{q:"What does her father say about faith?",opts:["That she must follow the family religion","That faith which cannot survive questions is not faith but fear","That she should avoid religion altogether","That prayer is more important than education"],a:1,e:"He tells her that a faith that cannot survive questions is really fear."},{q:"What kind of friends does Aliya's father say are worth keeping?",opts:["Rich and influential friends","Friends from the same neighbourhood","Friends who make her more herself, not less","Friends who are top of their class"],a:2,e:"He warns her about belonging at the cost of standing out — the friends worth keeping make her more herself."},{q:"What is the central gift the novel suggests a father can give his daughter?",opts:["Wealth and comfort","Wisdom and courage to protect herself","A good marriage","Academic certificates"],a:1,e:"The novel argues the most important gift is not protection but the wisdom and courage to protect herself."}]},
+
+{id:6,title:"The Lekki Headmaster",author:"Kabir Alabi Garba",genre:"JAMB 2025 · Educational",clr:"#1a4a6a",badge:"JAMB",
+summary:{ov:"The official JAMB 2025/2026 UTME novel. The Lekki Headmaster follows Mr. Bepo Adewale, a passionate headmaster of Stardom Schools in Lagos, as he battles systemic challenges, corrupt administrators, and societal apathy to deliver quality education.",themes:["Education","Leadership","Integrity","Nigerian Society","Institutional Reform"],msg:"True leadership is not about titles — it is about sacrifice in the face of resistance.",quotes:[{t:"A school without discipline is a farm without a fence.",a:"Mr. Bepo Adewale"},{t:"Every child deserves a teacher who refuses to give up.",a:"Mr. Bepo Adewale"},{t:"The headmaster who bends for money will break the children.",a:"Mr. Bepo, to the board"}]},
+content:`<h2>Introduction: The man and the school</h2><p>Mr. Bepo Adewale is the headmaster of Stardom Schools in Lekki, Lagos. Beneath the surface of the school's reputation lies an institution battling poor infrastructure, underpaid teachers, grade-chasing parents, and a proprietor whose apathy toward integrity is alarming. Mr. Bepo arrived five years ago. He has not left — despite every reason to.</p><h2>The challenges of leadership</h2><p>Mr. Bepo's greatest battles are not with the students — they are with the system. He faces the turmoil of teachers who are burned out, parents who want results without effort, and a proprietor who sees malpractice as a reasonable business strategy. Mr. Bepo navigates each with solemn conviction that education must not be suppressed or compromised.</p><h2>The students at the centre</h2><p>Two students anchor the novel's poignant core: Tobi, a brilliant boy from a poor background whose school fees are perpetually in arrears, and Sade, a girl whose parents are ambiguous about her dream of studying medicine. Mr. Bepo's quiet perseverance on their behalf shows real integrity and kinship with the vulnerable.</p><h2>Corruption and pressure</h2><p>A government inspection looms. The proprietor pressures Mr. Bepo to falsify records. Mr. Bepo refuses with defiant integrity — his conviction stronger than the threat of persecution by those above him.</p><h2>Resolution</h2><p>The inspection team arrives and finds Stardom Schools not perfect, but honest. The inspector's report notes the integrity of the headmaster as a distinguishing feature. Tobi wins a scholarship. Sade is allowed to pursue medicine. Mr. Bepo remains at his desk — his resilience undiminished.</p>`,
+quiz:[{q:"Who is the central character of The Lekki Headmaster?",opts:["A government inspector","Mr. Bepo Adewale, a headmaster","Tobi, a scholarship student","The school proprietor"],a:1,e:"Mr. Bepo Adewale, the dedicated headmaster of Stardom Schools, is the novel's central character."},{q:"What is the school proprietor's attitude toward examination malpractice?",opts:["He strongly opposes it","He considers it a reasonable business strategy","He is unaware it happens","He reports it to the government"],a:1,e:"The proprietor views examination malpractice as a practical business strategy."},{q:"What challenge does the student Tobi face?",opts:["He is academically weak","His school fees are perpetually in arrears","He wants to drop out","He is involved in cultism"],a:1,e:"Tobi is brilliant but from a poor background, with school fees always in arrears."},{q:"Why does the government inspection end positively for Mr. Bepo?",opts:["He bribed the inspectors","The school achieved perfect results","The inspector notes his integrity","The proprietor intervened"],a:2,e:"The inspector's report specifically notes the headmaster's integrity."},{q:"What does The Lekki Headmaster suggest about true leadership?",opts:["Leadership is about authority","True leadership is sacrifice in the face of resistance","Leaders must be wealthy","Leadership requires political connections"],a:1,e:"The novel argues that true leadership is not about titles but about sacrifice."}]},
+
+{id:7,title:"The Life Changer",author:"Khadija Abubakar Jalli",genre:"JAMB 2024 · Campus Life",clr:"#3a5a2a",badge:"JAMB",
+summary:{ov:"The previous JAMB recommended novel. The Life Changer follows Salma, a young girl admitted to study Law at Ahmadu Bello University, narrated by her mother Ummi who weaves in stories of her own campus experiences.",themes:["Campus Life","Temptation","Parental Guidance","Choices","Consequences"],msg:"University is not a destination — it is a crucible. The choices you make in those years will change your life.",quotes:[{t:"The university is a place where your character is tested, not just your intelligence.",a:"Ummi"},{t:"Bad friends are like bad weather. You don't notice the damage until the storm has passed.",a:"Ummi"},{t:"The life changer is not the university. It is the choices you make inside it.",a:"Narrator"}]},
+content:`<h2>Ummi's voice</h2><p>The Life Changer is narrated by Ummi, a mother who tells her own campus stories with eloquent candour to prepare her children for university life. Her audience is primarily Omar, her son who has just gained admission to Ahmadu Bello University. Ummi speaks with solemn determination about the turmoil she witnessed — the corruption, the perseverance of some, and the apathy of others.</p><h2>Salma's journey</h2><p>Salma begins university as a naive, hopeful girl studying Law. Her early experiences are shaped by her roommates — each representing a different path: the hardworking student, the girl who trades grades for favour, the one who falls into cultism, and the one who suppresses her own potential through apathy.</p><h2>The temptations of campus life</h2><p>The novel is unflinching about the realities Ummi describes: sexual harassment from lecturers, malpractice rings, drug abuse in hostels, and social media rivalry that pulls students away from study. Ummi presents these not as ambiguous dangers but as everyday choices that require conviction and resilience.</p><h2>Omar's admission</h2><p>As Ummi tells her stories, Omar prepares to join the same university. His preparation is different — he arrives knowing the terrain. The novel suggests that the best defence against campus corruption is not innocence but knowledge, resilience, and humility.</p><h2>The life changer</h2><p>The novel closes with the solemn argument that the university itself is neutral. What changes a life is not the institution, but the determination students bring every single day. The title refers not to the university, but to the choices students make within it.</p>`,
+quiz:[{q:"Who narrates The Life Changer?",opts:["Salma","Omar","Ummi, the mother","Dr. Samuel Johnson"],a:2,e:"The novel is narrated by Ummi, a mother who shares her own campus experiences to prepare her children."},{q:"What course does Salma study at ABU?",opts:["Medicine","Mass Communication","Law","Engineering"],a:2,e:"Salma gains admission to study Law at Ahmadu Bello University."},{q:"What does the novel identify as the main challenge of campus life?",opts:["Academic workload","Daily choices around temptation and corruption","Distance from family","Inadequate facilities"],a:1,e:"The novel is about the daily choices students face — temptation, peer pressure, harassment, and corruption."},{q:"What is the significance of the title?",opts:["It refers to ABU as transformative","It refers to Salma's transformation","It refers to the daily choices students make","It refers to Ummi's decision to educate her children"],a:2,e:"The title refers to choices — the novel argues what changes a life is the decisions made within it."},{q:"Who is Omar in the novel?",opts:["Salma's boyfriend","Ummi's son about to enter ABU","A corrupt lecturer","Salma's roommate"],a:1,e:"Omar is Ummi's son who has just gained admission to the same university his sister Salma attends."}]}
+];
+
+let cur=null, tab='read', qi=0, qs=0;
+const L=['A','B','C','D'];
+
+function buildNav(){
+  document.getElementById('book-nav').innerHTML = BOOKS.map(b =>
+    `<div class="ni" id="nb${b.id}" onclick="openBook(${b.id})">
+      <div class="dot" style="background:${b.clr}"></div>
+      <div><div class="nl">${b.title}</div><div class="ng">${b.genre.split(' · ')[0]}</div></div>
+    </div>`
+  ).join('');
+}
+
+function buildGrid(){
+  document.getElementById('book-grid').innerHTML = BOOKS.map((b,i) =>
+    `<div class="tile anim a${Math.min(i+1,5)}" onclick="openBook(${b.id})">
+      <div class="tcover" style="background:${b.clr}">
+        ${b.badge ? `<div class="tcover-badge">${b.badge}</div>` : ''}
+        <div class="ttitle">${b.title}</div>
+      </div>
+      <div class="tinfo">
+        <div class="tauthor">${b.author}</div>
+        <span class="tgenre" style="background:${b.clr}18;color:${b.clr};border:.5px solid ${b.clr}40">${b.genre.split(' · ')[0]}</span>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function showHome(){
+  cur = null;
+  ['home','reader-pane','summary-pane','quiz-pane'].forEach((id,i) =>
+    document.getElementById(id).style.display = i===0 ? 'block' : 'none');
+  document.getElementById('tab-strip').style.display = 'none';
+  document.getElementById('prog').style.width = '0%';
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  document.getElementById('nav-home').classList.add('active');
+  closeSidebar();
+}
+
+function openBook(id){
+  cur = BOOKS[id];
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  document.getElementById('nb'+id).classList.add('active');
+  document.getElementById('tab-strip').style.display = 'flex';
+  document.getElementById('home').style.display = 'none';
+  tab = 'read'; render();
+  closeSidebar();
+}
+
+function sw(t){ tab = t; render(); }
+
+function render(){
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  document.querySelectorAll('.tab')[['read','summary','quiz'].indexOf(tab)].classList.add('on');
+  ['reader-pane','summary-pane','quiz-pane'].forEach(id =>
+    document.getElementById(id).style.display = 'none');
+  if(tab==='read') renderRead();
+  if(tab==='summary') renderSum();
+  if(tab==='quiz'){ qi=0; qs=0; renderQuiz(); }
+}
+
+function wrapDefs(html){
+  return html.replace(/>([^<]+)</g, (match, text) => {
+    let out = text;
+    Object.keys(DEFS).forEach(word => {
+      const re = new RegExp(`\\b(${word}s?|${word[0].toUpperCase()+word.slice(1)}s?)\\b`, 'g');
+      out = out.replace(re, (m) => {
+        const key = m.toLowerCase().replace(/s$/,'');
+        const def = DEFS[key] || DEFS[word];
+        if(!def) return m;
+        return `<span class="def-word" tabindex="0">${m}<span class="tip">${def}</span></span>`;
+      });
+    });
+    return `>${out}<`;
+  });
+}
+
+function renderRead(){
+  document.getElementById('prog').style.width = '30%';
+  const p = document.getElementById('reader-pane');
+  p.style.display = 'block';
+  p.innerHTML = `
+    <div class="rprose anim">${wrapDefs(cur.content)}</div>
+    <div class="done-bar anim a3">
+      <p>Done reading? Explore the summary or test yourself.</p>
+      <div class="brow">
+        <button class="btn btn-o" onclick="sw('summary')">View Summary</button>
+        <button class="btn btn-p" onclick="sw('quiz')">Take Quiz</button>
+      </div>
+    </div>`;
+}
+
+function renderSum(){
+  document.getElementById('prog').style.width = '60%';
+  const s = cur.summary, p = document.getElementById('summary-pane');
+  p.style.display = 'block';
+  p.innerHTML = `
+  <div class="sbk anim">
+    <div class="scov" style="background:${cur.clr}"></div>
+    <div>
+      <h2>${cur.title}</h2><div class="sby">by ${cur.author}</div>
+      <span style="font-size:.65rem;padding:2px 9px;border-radius:20px;background:${cur.clr}18;color:${cur.clr};border:.5px solid ${cur.clr}40;margin-top:6px;display:inline-block">${cur.genre}</span>
+    </div>
+  </div>
+  <div class="scard anim a1"><div class="slabel">Overview</div><p>${s.ov}</p></div>
+  <div class="scard anim a2"><div class="slabel">Key themes</div><div class="trow">${s.themes.map(t=>`<span class="tpill">${t}</span>`).join('')}</div></div>
+  <div class="scard anim a3"><div class="slabel">Central message</div><p>${s.msg}</p></div>
+  <div class="scard anim a4"><div class="slabel">Notable quotes</div>${s.quotes.map(q=>`<div class="qblock"><p>"${q.t}"</p><div class="qattr">— ${q.a}</div></div>`).join('')}</div>`;
+}
+
+function renderQuiz(){
+  const p = document.getElementById('quiz-pane');
+  p.style.display = 'block';
+  if(qi >= cur.quiz.length){
+    const pct = Math.round((qs/cur.quiz.length)*100);
+    const msg = pct>=80?'Excellent! You know this novel well.':pct>=60?'Good effort! Review the chapters.':"Keep reading — you'll get there!";
+    p.innerHTML = `<div class="scoreend">
+      <div class="sbig">${qs}/${cur.quiz.length}</div>
+      <div class="smsg">${msg}</div>
+      <div class="spct">${pct}% correct</div>
+      <div class="brow" style="margin-top:1.25rem">
+        <button class="btn btn-o" onclick="qi=0;qs=0;renderQuiz()">Retake</button>
+        <button class="btn btn-p" onclick="sw('read')">Back to Reading</button>
+      </div>
+    </div>`;
+    document.getElementById('prog').style.width = '100%';
+    return;
+  }
+  const q = cur.quiz[qi];
+  document.getElementById('prog').style.width = Math.round((qi/cur.quiz.length)*100)+'%';
+  p.innerHTML = `
+  <div class="qztop anim"><div class="qzctr">Question ${qi+1} of ${cur.quiz.length}</div><div class="qzlive">${qs} correct</div></div>
+  <div class="qzq anim a1">${q.q}</div>
+  <div id="opts" class="anim a2">${q.opts.map((o,i)=>`<button class="obt" onclick="ans(${i})"><span class="oltr">${L[i]}</span>${o}</button>`).join('')}</div>
+  <div class="fb" id="fb"></div>
+  <div class="qnav" id="qnav">
+    <button class="btn btn-p" onclick="qi++;renderQuiz()">${qi+1<cur.quiz.length?'Next question':'See results'}</button>
+  </div>`;
+}
+
+function ans(i){
+  const q = cur.quiz[qi];
+  document.querySelectorAll('.obt').forEach(b => b.classList.add('lk'));
+  const opts = document.querySelectorAll('.obt');
+  const fb = document.getElementById('fb');
+  if(i===q.a){
+    qs++; opts[i].classList.add('ok');
+    fb.className='fb ok'; fb.innerHTML='<strong>Correct!</strong> '+q.e;
+  } else {
+    opts[i].classList.add('no'); opts[q.a].classList.add('ok');
+    fb.className='fb no'; fb.innerHTML='<strong>Not quite.</strong> '+q.e;
+  }
+  fb.style.display='block';
+  document.getElementById('qnav').style.display='flex';
+}
+
+buildNav(); buildGrid();
+</script>
+</body>
+</html>
